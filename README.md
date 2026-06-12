@@ -49,6 +49,17 @@ curl -fsSL https://raw.githubusercontent.com/username/webSSHpanel/main/agents/in
 
 The agent runs as a systemd daemon (`ssh-agent.service`) listening on Port 8080 and handles user creations and health checks requests authenticated by a shared secret token.
 
+### 3. Setting Up a Secure WireGuard Tunnel (Optional)
+If you want to place the Panel Server in one region (e.g. domestically) and route SSH VPN traffic to an Offshore VPS (Agent Server), you can build an encrypted WireGuard tunnel.
+
+Run the tunnel setup script on **both** your Panel Server and your Agent Server:
+```bash
+sudo bash scripts/tunnel.sh
+```
+1. Run it on the **Panel Server** first and choose `Option 1`. It will configure `iptables` and give you a Public Key.
+2. Run it on the **Agent Server** and choose `Option 2`. It will ask for the Panel's Public Key.
+3. Once completed, all SSH VPN traffic hitting the Panel server on your chosen port will be routed encrypted to the offshore Agent server.
+
 ## REST API Versioning
 
 API endpoints are prefix Version 1 under `/api/v1` and documentations are fully available at `/docs` (Swagger UI).

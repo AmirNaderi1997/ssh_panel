@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# Exit on any error
+set -e
+
+# Define colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}==========================================${NC}"
+echo -e "${GREEN}      SSH Manager Pro Auto-Installer      ${NC}"
+echo -e "${GREEN}==========================================${NC}"
+
+# 1. Check prerequisites
+echo -e "${YELLOW}Checking prerequisites...${NC}"
+
+if ! command -v git &> /dev/null; then
+    echo -e "${RED}Git is not installed. Please install git.${NC}"
+    exit 1
+fi
+
+if ! command -v docker &> /dev/null; then
+    echo -e "${YELLOW}Docker is not installed. Installing docker...${NC}"
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    rm get-docker.sh
+fi
+
+if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+    echo -e "${RED}Docker Compose is not installed. Please install Docker Compose plugin.${NC}"
+    exit 1
+fi
+
+# 2. Ask for GitHub Repository URL
+# You can default this to your actual repository URL if you prefer not to ask
+read -p "Enter your GitHub repository URL (e.g., https://github.com/yourusername/webSSHpanel.git): " REPO_URL
+
+if [ -z "$REPO_URL" ]; then
+    echo -e "${RED}Repository URL cannot be empty. Exiting.${NC}"
+    exit 1
+fi
+
+INSTALL_DIR="/opt/ssh_manager_pro"
+
+# 3. Clone or Update Repository
+echo -e "${YELLOW}Cloning repository to $INSTALL_DIR...${NC}"
+if [ -d "$INSTALL_DIR" ]; then
+    echo -e "${YELLOW}Directory $INSTALL_DIR already exists. Fetching latest changes...${NC}"
+    cd "$INSTALL_DIR"
+    sudo git fetch --all
+    sudo git reset --hard origin/main
+    sudo git pull
+else
+    sudo git clone "$REPO_URL" "$INSTALL_DIR"
+    cd "$INSTALL_DIR"
+fi
+
+# 4. Generate Environment Variables
+echo -e "${YELLOW}Configuring environment variables...${NC}"
+
+# Generate 32-byte url-safe base64 key for Fernet
+if command -v python3 &> /dev/null; then
+    # Try to use python's cryptography if installed, otherwise fallback to openssl base64
+    ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" 2>/dev/null || openssl rand -base64 32)
+else
+    ENCRYPTION_KEY=$(openssl rand -base64 32)
+fi
+
+SECRET_KEY=$(openssl rand -hex 32)
+POSTGRES_PASSWORD=$(openssl rand -hex 16)
+AGENT_SECRET=$(openssl rand -hex 24)
+
+# Create the .env file in the docker directory
+sudo mkdir -p "$INSTALL_DIR/docker"
+sudo bash -c "cat > $INSTALL_DIR/docker/.env <<EOF
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+POSTGRES_DB=ssh_manager
+SECRET_KEY=${SECRET_KEY}
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
+AGENT_SHARED_SECRET=${AGENT_SECRET}
+EOF"
+
+# 5. Build and Deploy
+echo -e "${YELLOW}Building and starting services...${NC}"
+cd "$INSTALL_DIR/docker"
+
+# Check if using docker compose (v2) or docker-compose (v1)
+if docker compose version &> /dev/null; then
+    sudo docker compose up -d --build
+else
+    sudo docker-compose up -d --build
+fi
+
+# 6. Final Instructions
+SERVER_IP=$(curl -s ifconfig.me || echo "YOUR_SERVER_IP")
+
+echo -e "${GREEN}==========================================${NC}"
+echo -e "${GREEN}Installation completed successfully!${NC}"
+echo -e "Web Panel URL: http://${SERVER_IP}"
+echo -e "Default Admin: admin / adminpassword123 (Please change after logging in)"
+echo -e "Install Directory: ${INSTALL_DIR}"
+echo -e "${GREEN}==========================================${NC}"
