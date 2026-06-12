@@ -27,8 +27,8 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install Python modules
-pip install --upgrade pip
-pip install fastapi uvicorn psutil pydantic-settings
+pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple || pip install --upgrade pip
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple fastapi uvicorn psutil pydantic-settings || pip install fastapi uvicorn psutil pydantic-settings
 
 # Create config .env
 cat << 'EOF' > .env
