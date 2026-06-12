@@ -31,7 +31,7 @@ webSSHpanel/
 To deploy the dashboard panel, run the central install script on your server:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/username/webSSHpanel/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/AmirNaderi1997/ssh_panel/main/install.sh | bash
 ```
 
 This will verify docker dependencies, configure random secret keys in `docker/.env`, and spin up the backend API, Postgres DB, Redis caching, Celery worker threads, and serve the React panel on Port 80.
@@ -44,7 +44,7 @@ This will verify docker dependencies, configure random secret keys in `docker/.e
 Deploy the lightweight agent on target remote VPS nodes using:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/username/webSSHpanel/main/agents/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/AmirNaderi1997/ssh_panel/main/agents/install.sh | bash
 ```
 
 The agent runs as a systemd daemon (`ssh-agent.service`) listening on Port 8080 and handles user creations and health checks requests authenticated by a shared secret token.

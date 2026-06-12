@@ -16,7 +16,11 @@ class BackupService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.backup_repo = BackupRepository(db)
-        self.backup_dir = "/Users/amirhossein/Documents/webSSHpanel/backend/backups"
+        # Dynamically set backup directory relative to the project root/backend directory
+        self.backup_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "backups"
+        )
         os.makedirs(self.backup_dir, exist_ok=True)
 
     async def create_db_backup(self, notes: str | None = None, creator_id: uuid.UUID | None = None) -> Backup:
