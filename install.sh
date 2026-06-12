@@ -52,9 +52,9 @@ CODE_RETRIEVED=false
 if [ -d "$INSTALL_DIR/.git" ]; then
     echo -e "${YELLOW}Directory $INSTALL_DIR already exists as a Git repository. Fetching latest changes...${NC}"
     cd "$INSTALL_DIR"
-    if sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 fetch --all && \
-       sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git reset --hard origin/main && \
-       sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git pull; then
+    if timeout 15 sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 fetch --all && \
+       timeout 15 sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git reset --hard origin/main && \
+       timeout 15 sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git pull; then
         CODE_RETRIEVED=true
     else
         echo -e "${YELLOW}Git update failed or timed out. Falling back to tarball download...${NC}"
@@ -62,7 +62,7 @@ if [ -d "$INSTALL_DIR/.git" ]; then
 else
     # Try direct clone with a low speed timeout first, isolating git configuration to bypass any insteadOf rewrites
     echo -e "${YELLOW}Trying to clone from GitHub directly (with timeout)...${NC}"
-    if sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
+    if timeout 15 sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
         CODE_RETRIEVED=true
     else
         echo -e "${YELLOW}Git clone failed or timed out. Falling back to tarball download...${NC}"
