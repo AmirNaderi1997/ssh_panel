@@ -46,26 +46,46 @@ INSTALL_DIR="/opt/ssh_manager_pro"
 
 # 3. Clone or Update Repository
 echo -e "${YELLOW}Cloning repository to $INSTALL_DIR...${NC}"
-if [ -d "$INSTALL_DIR" ]; then
-    echo -e "${YELLOW}Directory $INSTALL_DIR already exists. Fetching latest changes...${NC}"
+sudo mkdir -p "$INSTALL_DIR"
+CODE_RETRIEVED=false
+
+if [ -d "$INSTALL_DIR/.git" ]; then
+    echo -e "${YELLOW}Directory $INSTALL_DIR already exists as a Git repository. Fetching latest changes...${NC}"
     cd "$INSTALL_DIR"
-    sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git fetch --all
-    sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git reset --hard origin/main
-    sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git pull
+    if sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 fetch --all && \
+       sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git reset --hard origin/main && \
+       sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git pull; then
+        CODE_RETRIEVED=true
+    else
+        echo -e "${YELLOW}Git update failed or timed out. Falling back to tarball download...${NC}"
+    fi
 else
     # Try direct clone with a low speed timeout first, isolating git configuration to bypass any insteadOf rewrites
     echo -e "${YELLOW}Trying to clone from GitHub directly (with timeout)...${NC}"
-    if ! sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=15 clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
-        echo -e "${YELLOW}Direct clone failed or timed out. Retrying with a GitHub proxy mirror...${NC}"
-        # Fall back to a proxy mirror
-        PROXY_URL="https://mirror.ghproxy.com/$REPO_URL"
-        if ! sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git clone --depth 1 "$PROXY_URL" "$INSTALL_DIR"; then
-            echo -e "${RED}Failed to clone the repository even with a proxy mirror. Please check your internet connection or DNS settings.${NC}"
-            exit 1
-        fi
+    if sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
+        CODE_RETRIEVED=true
+    else
+        echo -e "${YELLOW}Git clone failed or timed out. Falling back to tarball download...${NC}"
     fi
-    cd "$INSTALL_DIR"
 fi
+
+# Fallback: Download via curl + extract via tar
+if [ "$CODE_RETRIEVED" = false ]; then
+    echo -e "${YELLOW}Downloading repository tarball from GitHub...${NC}"
+    TARBALL_URL="https://github.com/AmirNaderi1997/ssh_panel/archive/refs/heads/main.tar.gz"
+    if sudo curl -fsSL -m 30 "$TARBALL_URL" -o /tmp/ssh_panel.tar.gz; then
+        echo -e "${YELLOW}Extracting repository contents...${NC}"
+        sudo tar -xzf /tmp/ssh_panel.tar.gz -C "$INSTALL_DIR" --strip-components=1
+        sudo rm -f /tmp/ssh_panel.tar.gz
+        echo -e "${GREEN}Codebase retrieved successfully via tarball!${NC}"
+        CODE_RETRIEVED=true
+    else
+        echo -e "${RED}Failed to download repository tarball. Please check your internet connection and DNS settings.${NC}"
+        exit 1
+    fi
+fi
+
+cd "$INSTALL_DIR"
 
 # 4. Generate Environment Variables
 echo -e "${YELLOW}Configuring environment variables...${NC}"
