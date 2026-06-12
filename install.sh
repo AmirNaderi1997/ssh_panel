@@ -49,11 +49,21 @@ echo -e "${YELLOW}Cloning repository to $INSTALL_DIR...${NC}"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Directory $INSTALL_DIR already exists. Fetching latest changes...${NC}"
     cd "$INSTALL_DIR"
-    sudo git fetch --all
-    sudo git reset --hard origin/main
-    sudo git pull
+    sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git fetch --all
+    sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git reset --hard origin/main
+    sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git pull
 else
-    sudo git clone "$REPO_URL" "$INSTALL_DIR"
+    # Try direct clone with a low speed timeout first, isolating git configuration to bypass any insteadOf rewrites
+    echo -e "${YELLOW}Trying to clone from GitHub directly (with timeout)...${NC}"
+    if ! sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=15 clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
+        echo -e "${YELLOW}Direct clone failed or timed out. Retrying with a GitHub proxy mirror...${NC}"
+        # Fall back to a proxy mirror
+        PROXY_URL="https://mirror.ghproxy.com/$REPO_URL"
+        if ! sudo GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git clone --depth 1 "$PROXY_URL" "$INSTALL_DIR"; then
+            echo -e "${RED}Failed to clone the repository even with a proxy mirror. Please check your internet connection or DNS settings.${NC}"
+            exit 1
+        fi
+    fi
     cd "$INSTALL_DIR"
 fi
 
