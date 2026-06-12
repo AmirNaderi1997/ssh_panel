@@ -34,9 +34,13 @@ if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/
 fi
 
 # 2. Ask for GitHub Repository URL
-# Defaulting to the repository URL to make it one-click
-read -p "Enter your GitHub repository URL [default: https://github.com/AmirNaderi1997/ssh_panel.git]: " REPO_URL
-REPO_URL=${REPO_URL:-"https://github.com/AmirNaderi1997/ssh_panel.git"}
+# Check if running interactively (TTY). If not (e.g. curl | bash), use default URL.
+if [ -t 0 ]; then
+    read -p "Enter your GitHub repository URL [default: https://github.com/AmirNaderi1997/ssh_panel.git]: " REPO_INPUT
+    REPO_URL=${REPO_INPUT:-"https://github.com/AmirNaderi1997/ssh_panel.git"}
+else
+    REPO_URL="https://github.com/AmirNaderi1997/ssh_panel.git"
+fi
 
 INSTALL_DIR="/opt/ssh_manager_pro"
 
