@@ -33,6 +33,33 @@ if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/
     exit 1
 fi
 
+# Verify Docker Hub access and configure mirrors if blocked/sanctioned (e.g. in Iran)
+echo -e "${YELLOW}Verifying Docker Registry connectivity...${NC}"
+if ! docker pull alpine:latest &>/dev/null; then
+    echo -e "${YELLOW}Direct Docker Hub access is restricted or timing out. Configuring registry mirrors...${NC}"
+    sudo mkdir -p /etc/docker
+    # Use popular mirrors for bypassing sanctions
+    sudo bash -c 'cat > /etc/docker/daemon.json <<EOF
+{
+  "registry-mirrors": [
+    "https://docker.iranserver.com",
+    "https://docker.arvancloud.ir",
+    "https://docker.hostiran.ir",
+    "https://docker.mihanpix.com"
+  ]
+}
+EOF'
+    echo -e "${YELLOW}Restarting Docker service to apply mirrors...${NC}"
+    sudo systemctl restart docker
+    if docker pull alpine:latest &>/dev/null; then
+        echo -e "${GREEN}Docker registry mirrors configured successfully!${NC}"
+    else
+        echo -e "${RED}Warning: Docker registry mirrors configured but test pull still failed. Building might fail.${NC}"
+    fi
+else
+    echo -e "${GREEN}Docker Hub connection is healthy.${NC}"
+fi
+
 # 2. Ask for GitHub Repository URL
 # Check if running interactively (TTY). If not (e.g. curl | bash), use default URL.
 if [ -t 0 ]; then
